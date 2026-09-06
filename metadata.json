@@ -1,0 +1,6 @@
+{
+  "name": "Background Remover",
+  "description": "클라이언트 기반 AI 실시간 이미지 배경 제거 도구 (Fast Browser-based Image Background Removal)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

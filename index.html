@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CLEARCUT.AI - 실시간 클라이언트 AI 배경 제거 스튜디오</title>
+    <meta name="description" content="클라이언트 기반 AI 실시간 이미지 배경 제거 도구 (Fast Browser-based Image Background Removal)" />
+    <meta property="og:title" content="CLEARCUT.AI - 실시간 클라이언트 AI 배경 제거 스튜디오" />
+    <meta property="og:description" content="클라이언트 기반 AI 실시간 이미지 배경 제거 도구 (Fast Browser-based Image Background Removal)" />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-main: #0f172a;
+        --card-bg: #1e293b;
+        --card-hover: #26334d;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+        --accent-glow: rgba(99, 102, 241, 0.5);
+        --text-main: #f8fafc;
+        --text-sub: #94a3b8;
+        --header-bg: rgba(15, 23, 42, 0.85);
+        --chip-bg: rgba(255, 255, 255, 0.05);
+        --inner-bg: rgba(0, 0, 0, 0.25);
+        --checkered-1: #1e293b;
+        --checkered-2: #0f172a;
+      }
+
+      body.light-theme {
+        --bg-main: #f8fafc;
+        --card-bg: #ffffff;
+        --card-hover: #f1f5f9;
+        --border-color: rgba(0, 0, 0, 0.08);
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+        --accent-glow: rgba(99, 102, 241, 0.25);
+        --text-main: #0f172a;
+        --text-sub: #64748b;
+        --header-bg: rgba(255, 255, 255, 0.85);
+        --chip-bg: rgba(0, 0, 0, 0.04);
+        --inner-bg: #f1f5f9;
+        --checkered-1: #e2e8f0;
+        --checkered-2: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        line-height: 1.5;
+        transition: background-color 0.25s ease, color 0.25s ease;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Checkered pattern for transparent previews */
+      .bg-checkered {
+        background-color: var(--checkered-2);
+        background-image: 
+          linear-gradient(45deg, var(--checkered-1) 25%, transparent 25%), 
+          linear-gradient(-45deg, var(--checkered-1) 25%, transparent 25%), 
+          linear-gradient(45deg, transparent 75%, var(--checkered-1) 75%), 
+          linear-gradient(-45deg, transparent 75%, var(--checkered-1) 75%);
+        background-size: 18px 18px;
+        background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+      }
+
+      /* Status pulse dot */
+      .status-pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: #10B981;
+        border-radius: 50%;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: statusPulse 2s infinite;
+      }
+
+      @keyframes statusPulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+      }
+
+      /* Holographic laser scan line */
+      @keyframes scan {
+        0% { top: 0%; opacity: 0.8; }
+        50% { top: 96%; opacity: 1; }
+        100% { top: 0%; opacity: 0.8; }
+      }
+
+      .scanner-beam {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #818cf8, #6366f1, #818cf8, transparent);
+        box-shadow: 0 0 14px #6366f1;
+        animation: scan 2s ease-in-out infinite;
+        z-index: 10;
+      }
+
+      /* Header */
+      header {
+        height: 72px;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--header-bg);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+      }
+
+      .brand-title {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, #818cf8, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .btn-primary {
+        background-color: var(--accent);
+        color: #ffffff;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px var(--accent-glow);
+      }
+      .btn-primary:hover {
+        background-color: var(--accent-hover);
+        transform: translateY(-1px);
+      }
+      .btn-primary:active {
+        transform: translateY(0);
+      }
+
+      .btn-secondary {
+        background-color: var(--chip-bg);
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+      }
+      .btn-secondary:hover {
+        background-color: var(--card-hover);
+      }
+
+      /* Dropzone Area */
+      .dropzone-box {
+        border: 2px dashed rgba(99, 102, 241, 0.35);
+        border-radius: 20px;
+        padding: 48px 24px;
+        text-align: center;
+        cursor: pointer;
+        background-color: rgba(99, 102, 241, 0.02);
+        transition: all 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .dropzone-box:hover, .dropzone-box.drag-over {
+        border-color: var(--accent);
+        background-color: rgba(99, 102, 241, 0.08);
+        transform: scale(1.005);
+      }
+
+      /* Slider Comparison Container */
+      .slider-view-wrapper {
+        position: relative;
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        user-select: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-color);
+        background: var(--inner-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        max-height: 65vh;
+      }
+
+      .slider-view-wrapper img {
+        display: block;
+        max-width: 100%;
+        max-height: 65vh;
+        object-fit: contain;
+      }
+
+      .slider-divider-line {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #ffffff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+        z-index: 25;
+        cursor: ew-resize;
+      }
+
+      .slider-handle-button {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #6366f1;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 16px rgba(99, 102, 241, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: ew-resize;
+      }
+
+      /* View Mode Tabs */
+      .tab-group {
+        display: inline-flex;
+        background-color: var(--chip-bg);
+        padding: 4px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+      }
+      .tab-btn {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        background: transparent;
+        color: var(--text-sub);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s ease;
+      }
+      .tab-btn.active {
+        background-color: var(--accent);
+        color: #ffffff;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 9999px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.6); }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header id="app-header">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #a855f7); display: flex; align-items: center; justify-content: center; color: white;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="brand-title">CLEARCUT.AI</span>
+            <span style="font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">PRO</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-sub); font-weight: 500;">실시간 브라우저 AI 배경 제거 스튜디오</p>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <!-- Engine Pulse Badge -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 9999px; background: var(--chip-bg); border: 1px solid var(--border-color); font-size: 12px; font-weight: 600;">
+          <div class="status-pulse-dot"></div>
+          <span>WASM Neural Engine</span>
+          <span style="color: #10b981; font-weight: 500;">Active</span>
+        </div>
+
+        <!-- Privacy Shield Badge -->
+        <div style="display: none; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9999px; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 12px; font-weight: 600;" id="privacy-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>100% 온디바이스 처리</span>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button id="theme-toggle-btn" class="btn-secondary" style="padding: 8px 10px; border-radius: 10px;" title="테마 전환">
+          <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main style="flex: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: 32px 20px; display: flex; flex-direction: column; justify-content: center;">
+      
+      <!-- VIEW 1: UPLOAD DROPZONE -->
+      <section id="upload-view" style="display: flex; flex-direction: column; gap: 28px;">
+        <div style="text-align: center; max-width: 680px; margin: 0 auto;">
+          <h1 style="font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px;">
+            브라우저에서 즉시 실행되는 <span style="background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">초고속 AI 배경 제거</span>
+          </h1>
+          <p style="font-size: 14px; color: var(--text-sub);">
+            사진을 외부 서버로 전송하지 않고 브라우저(WebAssembly) 내에서 100% 안전하게 인물, 상품, 사물의 배경을 투명하게 분리합니다.
+          </p>
+        </div>
+
+        <!-- Dropzone Container -->
+        <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+          <div id="dropzone" class="dropzone-box">
+            <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/jpg" style="display: none;" />
+            <div style="width: 64px; height: 64px; border-radius: 16px; background: rgba(99, 102, 241, 0.12); color: #818cf8; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+            </div>
+            <p style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">
+              <span style="color: #818cf8; text-decoration: underline; text-underline-offset: 4px;">이미지 파일 선택</span> 또는 파일을 여기로 드래그하세요
+            </p>
+            <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 16px;">JPG, PNG, WEBP 지원 (최대 25MB)</p>
+            <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: var(--chip-bg); border: 1px solid var(--border-color); font-size: 11px; font-weight: 600; color: var(--text-sub);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+              <span>클립보드 이미지 붙여넣기 (Ctrl + V)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample Images Section -->
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-sub);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              <span>샘플 이미지로 바로 테스트</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-sub);">클릭 즉시 실행</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;" id="sample-grid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: PROCESSING SCANNER OVERLAY -->
+      <section id="processing-view" style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0;">
+        <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 36px; max-width: 540px; width: 100%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.15); position: relative; overflow: hidden;">
+          <!-- Thumbnail with laser beam -->
+          <div style="position: relative; width: 220px; height: 220px; margin: 0 auto 24px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border-color); background: var(--inner-bg);">
+            <img id="processing-thumb" src="" alt="Processing" style="width: 100%; height: 100%; object-fit: contain;" />
+            <div class="scanner-beam"></div>
+          </div>
+
+          <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 6px;">AI가 배경을 분리하고 있습니다</h3>
+          <p id="processing-stage" style="font-size: 13px; font-weight: 600; color: #818cf8; margin-bottom: 20px;">신경망 모델 초기화 중...</p>
+
+          <!-- Progress bar -->
+          <div style="width: 100%; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 6px;">
+              <span style="color: var(--text-sub);">연산 진행도</span>
+              <span id="processing-percent" style="color: #818cf8; font-family: monospace; font-size: 14px;">0%</span>
+            </div>
+            <div style="width: 100%; height: 8px; border-radius: 9999px; background: rgba(255,255,255,0.1); overflow: hidden;">
+              <div id="processing-bar" style="width: 5%; height: 100%; background: #6366f1; box-shadow: 0 0 12px rgba(99,102,241,0.8); border-radius: 9999px; transition: width 0.25s ease;"></div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-sub);">
+            <span>경과 시간: <span id="processing-timer">0.0초</span></span>
+            <span>WASM On-Device Processing</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: RESULT COMPARISON & TOOLBAR -->
+      <section id="result-view" style="display: none; flex-direction: column; gap: 20px;">
+        <!-- Top Toolbar with Mode Switcher -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div class="tab-group">
+            <button id="mode-slider-btn" class="tab-btn active">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+              <span>슬라이더 비교</span>
+            </button>
+            <button id="mode-side-btn" class="tab-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></svg>
+              <span>나란히 보기</span>
+            </button>
+            <button id="mode-toggle-btn" class="tab-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>원본 토글</span>
+            </button>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="slider-hint" style="font-size: 12px; color: var(--text-sub);">구분선을 좌우로 드래그하여 원본과 비교</span>
+            <button id="btn-reset-top" class="btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              <span>새 이미지</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. SLIDER COMPARISON CONTAINER -->
+        <div id="container-slider" class="slider-view-wrapper bg-checkered">
+          <!-- Background Cutout Layer -->
+          <div id="slider-cutout-layer" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
+            <img id="img-cutout" src="" alt="Background Removed" />
+          </div>
+
+          <!-- Foreground Original Layer (Clipped by slider position) -->
+          <div id="slider-original-layer" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);">
+            <img id="img-original" src="" alt="Original" />
+          </div>
+
+          <!-- Divider Line & Handle -->
+          <div id="slider-divider" class="slider-divider-line" style="left: 50%;">
+            <div class="slider-handle-button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18-6-6 6-6"/><path d="m15 6 6 6-6 6"/></svg>
+            </div>
+          </div>
+
+          <!-- Floating Badges -->
+          <span style="position: absolute; top: 14px; left: 14px; z-index: 30; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; padding: 4px 8px; border-radius: 6px; background: rgba(0,0,0,0.65); color: white; border: 1px solid rgba(255,255,255,0.15);">ORIGINAL</span>
+          <span style="position: absolute; top: 14px; right: 14px; z-index: 30; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; padding: 4px 8px; border-radius: 6px; background: rgba(99, 102, 241, 0.9); color: white; border: 1px solid rgba(255,255,255,0.2);">REMOVED</span>
+        </div>
+
+        <!-- 2. SIDE-BY-SIDE CONTAINER (Hidden by default) -->
+        <div id="container-side" style="display: none; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; align-items: center; position: relative;">
+            <span style="position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.6); color: white;">ORIGINAL</span>
+            <img id="img-side-original" src="" alt="Original" style="max-height: 55vh; max-width: 100%; object-fit: contain; border-radius: 10px;" />
+          </div>
+          <div id="side-cutout-box" class="bg-checkered" style="border: 1px solid var(--border-color); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; align-items: center; position: relative;">
+            <span style="position: absolute; top: 12px; left: 12px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #6366f1; color: white;">REMOVED</span>
+            <img id="img-side-cutout" src="" alt="Removed" style="max-height: 55vh; max-width: 100%; object-fit: contain; border-radius: 10px;" />
+          </div>
+        </div>
+
+        <!-- 3. TOGGLE CONTAINER (Hidden by default) -->
+        <div id="container-toggle" style="display: none; flex-direction: column; align-items: center;">
+          <div id="toggle-img-box" class="bg-checkered slider-view-wrapper" style="position: relative;">
+            <span id="toggle-status-badge" style="position: absolute; top: 14px; left: 14px; z-index: 30; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 6px; background: #6366f1; color: white;">REMOVED</span>
+            <img id="img-toggle-view" src="" alt="Toggle View" />
+          </div>
+          <div style="margin-top: 14px; display: flex; gap: 10px;">
+            <button id="btn-toggle-hold" class="btn-secondary" style="font-size: 12px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>누르고 있는 동안 원본 확인 (Hold to compare)</span>
+            </button>
+            <button id="btn-toggle-click" class="btn-secondary" style="font-size: 12px;">
+              <span>클릭하여 전환</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Background Presets & Color Picker Card -->
+        <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-main);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+              <span>배경 색상 변경 & 프리셋 합성</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-sub);">단색 배경을 즉시 합성하여 확인하고 다운로드하세요</span>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;" id="bg-presets-container">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Action Bar: Download & Copy -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <button id="btn-reset" class="btn-secondary" style="font-size: 13px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>다른 이미지 업로드</span>
+          </button>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <button id="btn-copy" class="btn-secondary" style="font-size: 13px;">
+              <svg id="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span id="copy-text">클립보드 복사</span>
+            </button>
+
+            <button id="btn-download-composed" class="btn-secondary" style="display: none; font-size: 13px; color: #818cf8; border-color: rgba(99, 102, 241, 0.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+              <span>배경 합성 PNG 저장</span>
+            </button>
+
+            <button id="btn-download-transparent" class="btn-primary" style="font-size: 13px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              <span>투명 PNG 다운로드</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Output Metadata Spec Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+          <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <div>
+              <p style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-sub);">해상도</p>
+              <p id="meta-res" style="font-size: 13px; font-weight: 700; color: var(--text-main);">-</p>
+            </div>
+          </div>
+
+          <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>
+            <div>
+              <p style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-sub);">원본 크기</p>
+              <p id="meta-orig-size" style="font-size: 13px; font-weight: 700; color: var(--text-main);">-</p>
+            </div>
+          </div>
+
+          <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>
+            <div>
+              <p style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-sub);">PNG 크기</p>
+              <p id="meta-res-size" style="font-size: 13px; font-weight: 700; color: var(--text-main);">-</p>
+            </div>
+          </div>
+
+          <div style="background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div>
+              <p style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-sub);">소요 시간</p>
+              <p id="meta-duration" style="font-size: 13px; font-weight: 700; color: var(--text-main);">-</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid var(--border-color); padding: 18px 24px; text-align: center; font-size: 12px; color: var(--text-sub); margin-top: auto;">
+      <p>모든 이미지 처리는 사용자의 브라우저(WebAssembly) 내에서 직접 수행되며, 서버에 사진이 전송되거나 저장되지 않습니다.</p>
+    </footer>
+
+    <!-- EMBEDDED COMPLETE JAVASCRIPT APPLICATION -->
+    <script type="module">
+      // 1. STATE CONFIGURATION
+      let currentFile = null;
+      let originalUrl = null;
+      let cutoutUrl = null;
+      let cutoutBlob = null;
+      let originalDimensions = { width: 0, height: 0 };
+      let originalSize = 0;
+      let cutoutSize = 0;
+      let processingStartTime = 0;
+      let timerInterval = null;
+      let currentViewMode = 'slider'; // 'slider' | 'side' | 'toggle'
+      let sliderPos = 50;
+      let isDragging = false;
+      let selectedBg = { id: 'transparent', type: 'transparent', value: 'transparent', label: '투명' };
+      let customBgColor = '#6366f1';
+      let toggleShowingOriginal = false;
+
+      // 2. SAMPLE IMAGES DATA
+      const SAMPLE_IMAGES = [
+        {
+          id: 'sample-portrait',
+          title: '인물 프로필',
+          category: '인물 사진',
+          url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop',
+          filename: 'portrait_sample.jpg'
+        },
+        {
+          id: 'sample-sneakers',
+          title: '스니커즈 운동화',
+          category: '이커머스 상품',
+          url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800&auto=format&fit=crop',
+          filename: 'sneakers_sample.jpg'
+        },
+        {
+          id: 'sample-dog',
+          title: '골든 리트리버',
+          category: '반려동물',
+          url: 'https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=800&auto=format&fit=crop',
+          filename: 'dog_sample.jpg'
+        },
+        {
+          id: 'sample-coffee',
+          title: '커피 테이크아웃 컵',
+          category: '오브젝트 소품',
+          url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=800&auto=format&fit=crop',
+          filename: 'coffee_cup_sample.jpg'
+        }
+      ];
+
+      // 3. BACKGROUND PRESETS
+      const BACKGROUND_PRESETS = [
+        { id: 'transparent', type: 'transparent', value: 'transparent', label: '투명' },
+        { id: 'white', type: 'color', value: '#FFFFFF', label: '증명사진 흰색' },
+        { id: 'soft-gray', type: 'color', value: '#F3F4F6', label: '소프트 그레이' },
+        { id: 'studio-black', type: 'color', value: '#111827', label: '스튜디오 블랙' },
+        { id: 'pastel-blue', type: 'color', value: '#DBEAFE', label: '파스텔 블루' },
+        { id: 'pastel-pink', type: 'color', value: '#FCE7F3', label: '파스텔 핑크' },
+        { id: 'navy', type: 'color', value: '#1E3A8A', label: '클래식 네이비' }
+      ];
+
+      // Helper: Format Bytes
+      function formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      }
+
+      // 4. THEME MANAGEMENT
+      const themeToggleBtn = document.getElementById('theme-toggle-btn');
+      let isDark = true;
+
+      function updateTheme(dark) {
+        isDark = dark;
+        if (dark) {
+          document.body.classList.remove('light-theme');
+        } else {
+          document.body.classList.add('light-theme');
+        }
+        localStorage.setItem('clearcut_theme', dark ? 'dark' : 'light');
+      }
+
+      const savedTheme = localStorage.getItem('clearcut_theme');
+      if (savedTheme === 'light') {
+        updateTheme(false);
+      } else if (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        updateTheme(false);
+      }
+
+      themeToggleBtn.addEventListener('click', () => {
+        updateTheme(!isDark);
+      });
+
+      // 5. RENDER SAMPLE IMAGES
+      const sampleGrid = document.getElementById('sample-grid');
+      SAMPLE_IMAGES.forEach(sample => {
+        const item = document.createElement('div');
+        item.style.cssText = 'background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 8px; cursor: pointer; transition: all 0.2s ease; overflow: hidden;';
+        item.innerHTML = `
+          <div style="width: 100%; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--inner-bg); position: relative;">
+            <img src="${sample.url}" alt="${sample.title}" style="width: 100%; height: 100%; object-fit: cover;" crossOrigin="anonymous" />
+            <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.2s ease; display: flex; align-items: center; justify-content: center;" class="sample-overlay">
+              <span style="background: rgba(0,0,0,0.75); color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">실행하기 &rarr;</span>
+            </div>
+          </div>
+          <div style="padding: 6px 4px 2px;">
+            <p style="font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sample.title}</p>
+            <p style="font-size: 11px; color: var(--text-sub);">${sample.category}</p>
+          </div>
+        `;
+        item.addEventListener('mouseenter', () => {
+          item.querySelector('.sample-overlay').style.opacity = '1';
+          item.style.transform = 'translateY(-2px)';
+          item.style.borderColor = 'var(--accent)';
+        });
+        item.addEventListener('mouseleave', () => {
+          item.querySelector('.sample-overlay').style.opacity = '0';
+          item.style.transform = 'translateY(0)';
+          item.style.borderColor = 'var(--border-color)';
+        });
+        item.addEventListener('click', () => {
+          loadSampleImage(sample);
+        });
+        sampleGrid.appendChild(item);
+      });
+
+      // 6. RENDER BACKGROUND PRESETS
+      const bgPresetsContainer = document.getElementById('bg-presets-container');
+      function renderBgPresets() {
+        bgPresetsContainer.innerHTML = '';
+        BACKGROUND_PRESETS.forEach(preset => {
+          const btn = document.createElement('button');
+          const isSelected = selectedBg.id === preset.id;
+          btn.style.cssText = `
+            display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;
+            background: ${isSelected ? 'rgba(99, 102, 241, 0.15)' : 'var(--chip-bg)'};
+            border: 1px solid ${isSelected ? '#6366f1' : 'var(--border-color)'};
+            color: ${isSelected ? '#818cf8' : 'var(--text-main)'};
+          `;
+          
+          let previewCircle = '';
+          if (preset.type === 'transparent') {
+            previewCircle = '<span class="bg-checkered" style="width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); display: inline-block;"></span>';
+          } else {
+            previewCircle = `<span style="width: 14px; height: 14px; border-radius: 50%; background: ${preset.value}; border: 1px solid rgba(255,255,255,0.3); display: inline-block;"></span>`;
+          }
+          btn.innerHTML = `${previewCircle}<span>${preset.label}</span>`;
+          btn.addEventListener('click', () => {
+            selectedBg = preset;
+            applySelectedBackground();
+            renderBgPresets();
+          });
+          bgPresetsContainer.appendChild(btn);
+        });
+
+        // Custom Color Picker Label
+        const customWrapper = document.createElement('label');
+        const isCustomSelected = selectedBg.id === 'custom';
+        customWrapper.style.cssText = `
+          display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;
+          background: ${isCustomSelected ? 'rgba(99, 102, 241, 0.15)' : 'var(--chip-bg)'};
+          border: 1px solid ${isCustomSelected ? '#6366f1' : 'var(--border-color)'};
+          color: ${isCustomSelected ? '#818cf8' : 'var(--text-main)'};
+        `;
+        customWrapper.innerHTML = `
+          <input type="color" id="custom-color-input" value="${customBgColor}" style="width: 16px; height: 16px; padding: 0; border: 0; border-radius: 4px; cursor: pointer; background: transparent;" />
+          <span>사용자 지정 색상</span>
+        `;
+        const colorInput = customWrapper.querySelector('#custom-color-input');
+        colorInput.addEventListener('input', (e) => {
+          customBgColor = e.target.value;
+          selectedBg = { id: 'custom', type: 'color', value: customBgColor, label: '사용자 지정' };
+          applySelectedBackground();
+          renderBgPresets();
+        });
+        bgPresetsContainer.appendChild(customWrapper);
+      }
+      renderBgPresets();
+
+      function applySelectedBackground() {
+        const sliderCutoutLayer = document.getElementById('slider-cutout-layer');
+        const sideCutoutBox = document.getElementById('side-cutout-box');
+        const toggleImgBox = document.getElementById('toggle-img-box');
+        const btnDownloadComposed = document.getElementById('btn-download-composed');
+
+        if (selectedBg.type === 'transparent') {
+          sliderCutoutLayer.style.background = 'transparent';
+          sideCutoutBox.style.background = '';
+          sideCutoutBox.classList.add('bg-checkered');
+          toggleImgBox.style.background = '';
+          toggleImgBox.classList.add('bg-checkered');
+          btnDownloadComposed.style.display = 'none';
+        } else {
+          sliderCutoutLayer.style.background = selectedBg.value;
+          sideCutoutBox.classList.remove('bg-checkered');
+          sideCutoutBox.style.backgroundColor = selectedBg.value;
+          toggleImgBox.classList.remove('bg-checkered');
+          toggleImgBox.style.backgroundColor = selectedBg.value;
+          btnDownloadComposed.style.display = 'inline-flex';
+        }
+      }
+
+      // 7. FILE SELECTION & DRAG & DROP
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+
+      dropzone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleSelectedFile(e.target.files[0]);
+        }
+      });
+
+      ['dragenter', 'dragover'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('drag-over');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('drag-over');
+        });
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files && files[0] && files[0].type.startsWith('image/')) {
+          handleSelectedFile(files[0]);
+        }
+      });
+
+      // Clipboard Paste Support (Ctrl + V)
+      window.addEventListener('paste', (e) => {
+        if (!e.clipboardData || !e.clipboardData.items) return;
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+          if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            if (blob) {
+              handleSelectedFile(blob);
+              break;
+            }
+          }
+        }
+      });
+
+      async function loadSampleImage(sample) {
+        try {
+          showProcessingView(sample.url);
+          const response = await fetch(sample.url);
+          const blob = await response.blob();
+          const file = new File([blob], sample.filename, { type: blob.type || 'image/jpeg' });
+          startBackgroundRemoval(file, sample.url);
+        } catch (err) {
+          alert('샘플 이미지를 불러오는 중 오류가 발생했습니다: ' + err.message);
+          showUploadView();
+        }
+      }
+
+      function handleSelectedFile(file) {
+        currentFile = file;
+        originalSize = file.size;
+        originalUrl = URL.createObjectURL(file);
+        showProcessingView(originalUrl);
+        startBackgroundRemoval(file, originalUrl);
+      }
+
+      // 8. PROCESSING LOGIC WITH CDN WASM AI
+      const uploadView = document.getElementById('upload-view');
+      const processingView = document.getElementById('processing-view');
+      const resultView = document.getElementById('result-view');
+      const processingThumb = document.getElementById('processing-thumb');
+      const processingStage = document.getElementById('processing-stage');
+      const processingPercent = document.getElementById('processing-percent');
+      const processingBar = document.getElementById('processing-bar');
+      const processingTimer = document.getElementById('processing-timer');
+
+      function showUploadView() {
+        clearInterval(timerInterval);
+        uploadView.style.display = 'flex';
+        processingView.style.display = 'none';
+        resultView.style.display = 'none';
+        fileInput.value = '';
+      }
+
+      function showProcessingView(thumbUrl) {
+        uploadView.style.display = 'none';
+        processingView.style.display = 'flex';
+        resultView.style.display = 'none';
+        processingThumb.src = thumbUrl;
+        processingStage.innerText = 'WASM 신경망 가속 엔진 로딩 중...';
+        processingPercent.innerText = '5%';
+        processingBar.style.width = '5%';
+        
+        processingStartTime = Date.now();
+        processingTimer.innerText = '0.0초';
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+          const elapsed = ((Date.now() - processingStartTime) / 1000).toFixed(1);
+          processingTimer.innerText = `${elapsed}초`;
+        }, 100);
+      }
+
+      function showResultView() {
+        clearInterval(timerInterval);
+        uploadView.style.display = 'none';
+        processingView.style.display = 'none';
+        resultView.style.display = 'flex';
+      }
+
+      async function startBackgroundRemoval(imageSource, previewUrl) {
+        const startTimestamp = Date.now();
+        
+        // Measure original image dimensions
+        const tempImg = new Image();
+        tempImg.src = previewUrl;
+        await new Promise(r => { tempImg.onload = r; });
+        originalDimensions = { width: tempImg.naturalWidth, height: tempImg.naturalHeight };
+
+        try {
+          // Dynamic import of @imgly/background-removal from jsDelivr ESM
+          processingStage.innerText = 'AI 모델 및 WebAssembly 모듈 로딩 중...';
+          const { removeBackground } = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
+
+          const config = {
+            publicPath: 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/',
+            progress: (key, current, total) => {
+              if (total > 0) {
+                const ratio = current / total;
+                const p = Math.min(98, Math.max(10, Math.round(ratio * 100)));
+                processingPercent.innerText = `${p}%`;
+                processingBar.style.width = `${p}%`;
+              }
+              if (key.includes('fetch')) {
+                processingStage.innerText = '경량 신경망 가중치 데이터 동기화 중...';
+              } else if (key.includes('compute') || key.includes('inference')) {
+                processingStage.innerText = '이미지 세그멘테이션 및 피사체 마스킹 계산 중...';
+              }
+            }
+          };
+
+          const resultBlobOutput = await removeBackground(imageSource, config);
+          cutoutBlob = resultBlobOutput;
+          cutoutSize = resultBlobOutput.size;
+          cutoutUrl = URL.createObjectURL(resultBlobOutput);
+
+          const durationMs = Date.now() - startTimestamp;
+          displayResults(durationMs);
+        } catch (err) {
+          console.warn('WASM engine failed, falling back to smart canvas segmentation:', err);
+          processingStage.innerText = '고속 캔버스 세그멘테이션으로 변환 중...';
+          await new Promise(r => setTimeout(r, 600));
+          try {
+            const fallbackBlob = await runSmartCanvasFallback(previewUrl);
+            cutoutBlob = fallbackBlob;
+            cutoutSize = fallbackBlob.size;
+            cutoutUrl = URL.createObjectURL(fallbackBlob);
+            const durationMs = Date.now() - startTimestamp;
+            displayResults(durationMs);
+          } catch (fallbackErr) {
+            alert('배경 제거 중 오류가 발생했습니다: ' + fallbackErr.message);
+            showUploadView();
+          }
+        }
+      }
+
+      // Smart canvas fallback in case WebAssembly/WebGL is constrained
+      async function runSmartCanvasFallback(imgSrc) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const d = imgData.data;
+
+            // Sample corner colors
+            const getRGB = (x, y) => {
+              const i = (y * canvas.width + x) * 4;
+              return [d[i], d[i+1], d[i+2]];
+            };
+            const corners = [
+              getRGB(0, 0),
+              getRGB(canvas.width - 1, 0),
+              getRGB(0, canvas.height - 1),
+              getRGB(canvas.width - 1, canvas.height - 1)
+            ];
+            const bgR = (corners[0][0] + corners[1][0] + corners[2][0] + corners[3][0]) / 4;
+            const bgG = (corners[0][1] + corners[1][1] + corners[2][1] + corners[3][1]) / 4;
+            const bgB = (corners[0][2] + corners[1][2] + corners[2][2] + corners[3][2]) / 4;
+
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i+1], b = d[i+2];
+              const diff = Math.sqrt((r - bgR)**2 + (g - bgG)**2 + (b - bgB)**2);
+              if (diff < 42) {
+                d[i+3] = 0;
+              } else if (diff < 68) {
+                d[i+3] = Math.floor(((diff - 42) / 26) * 255);
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            canvas.toBlob(blob => {
+              if (blob) resolve(blob);
+              else reject(new Error('Canvas toBlob failed'));
+            }, 'image/png');
+          };
+          img.onerror = () => reject(new Error('Failed to load image for fallback'));
+          img.src = imgSrc;
+        });
+      }
+
+      // 9. DISPLAY RESULTS IN COMPARISON VIEWER
+      const imgOriginal = document.getElementById('img-original');
+      const imgCutout = document.getElementById('img-cutout');
+      const imgSideOriginal = document.getElementById('img-side-original');
+      const imgSideCutout = document.getElementById('img-side-cutout');
+      const imgToggleView = document.getElementById('img-toggle-view');
+
+      function displayResults(durationMs) {
+        imgOriginal.src = originalUrl;
+        imgCutout.src = cutoutUrl;
+        imgSideOriginal.src = originalUrl;
+        imgSideCutout.src = cutoutUrl;
+        imgToggleView.src = cutoutUrl;
+
+        // Meta specifications
+        document.getElementById('meta-res').innerText = `${originalDimensions.width} × ${originalDimensions.height} px`;
+        document.getElementById('meta-orig-size').innerText = formatBytes(originalSize);
+        document.getElementById('meta-res-size').innerText = formatBytes(cutoutSize);
+        document.getElementById('meta-duration').innerText = `${(durationMs / 1000).toFixed(1)}s`;
+
+        setSliderPosition(50);
+        applySelectedBackground();
+        showResultView();
+      }
+
+      // 10. INTERACTIVE SLIDER COMPARISON LOGIC
+      const containerSlider = document.getElementById('container-slider');
+      const sliderOriginalLayer = document.getElementById('slider-original-layer');
+      const sliderDivider = document.getElementById('slider-divider');
+
+      function setSliderPosition(percentage) {
+        sliderPos = Math.max(0, Math.min(100, percentage));
+        sliderOriginalLayer.style.clipPath = `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)`;
+        sliderDivider.style.left = `${sliderPos}%`;
+      }
+
+      function updateSliderFromEvent(e) {
+        const rect = containerSlider.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const offsetX = clientX - rect.left;
+        const pct = (offsetX / rect.width) * 100;
+        setSliderPosition(pct);
+      }
+
+      containerSlider.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        updateSliderFromEvent(e);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (isDragging) updateSliderFromEvent(e);
+      });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      containerSlider.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        updateSliderFromEvent(e);
+      }, { passive: true });
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging) updateSliderFromEvent(e);
+      }, { passive: true });
+      window.addEventListener('touchend', () => { isDragging = false; });
+
+      // 11. VIEW MODE SWITCHING
+      const modeSliderBtn = document.getElementById('mode-slider-btn');
+      const modeSideBtn = document.getElementById('mode-side-btn');
+      const modeToggleBtn = document.getElementById('mode-toggle-btn');
+      const containerSide = document.getElementById('container-side');
+      const containerToggle = document.getElementById('container-toggle');
+      const sliderHint = document.getElementById('slider-hint');
+
+      function setViewMode(mode) {
+        currentViewMode = mode;
+        [modeSliderBtn, modeSideBtn, modeToggleBtn].forEach(b => b.classList.remove('active'));
+
+        containerSlider.style.display = 'none';
+        containerSide.style.display = 'none';
+        containerToggle.style.display = 'none';
+        sliderHint.style.display = 'none';
+
+        if (mode === 'slider') {
+          modeSliderBtn.classList.add('active');
+          containerSlider.style.display = 'flex';
+          sliderHint.style.display = 'inline-block';
+        } else if (mode === 'side') {
+          modeSideBtn.classList.add('active');
+          containerSide.style.display = 'grid';
+        } else if (mode === 'toggle') {
+          modeToggleBtn.classList.add('active');
+          containerToggle.style.display = 'flex';
+          updateToggleViewState(false);
+        }
+      }
+
+      modeSliderBtn.addEventListener('click', () => setViewMode('slider'));
+      modeSideBtn.addEventListener('click', () => setViewMode('side'));
+      modeToggleBtn.addEventListener('click', () => setViewMode('toggle'));
+
+      // Toggle Mode Actions
+      const btnToggleHold = document.getElementById('btn-toggle-hold');
+      const btnToggleClick = document.getElementById('btn-toggle-click');
+      const toggleStatusBadge = document.getElementById('toggle-status-badge');
+
+      function updateToggleViewState(showOriginal) {
+        toggleShowingOriginal = showOriginal;
+        if (showOriginal) {
+          imgToggleView.src = originalUrl;
+          toggleStatusBadge.innerText = 'ORIGINAL';
+          toggleStatusBadge.style.background = '#000000';
+        } else {
+          imgToggleView.src = cutoutUrl;
+          toggleStatusBadge.innerText = 'REMOVED';
+          toggleStatusBadge.style.background = '#6366f1';
+        }
+      }
+
+      btnToggleHold.addEventListener('mousedown', () => updateToggleViewState(true));
+      window.addEventListener('mouseup', () => {
+        if (currentViewMode === 'toggle' && toggleShowingOriginal) updateToggleViewState(false);
+      });
+      btnToggleHold.addEventListener('touchstart', () => updateToggleViewState(true), { passive: true });
+      window.addEventListener('touchend', () => {
+        if (currentViewMode === 'toggle' && toggleShowingOriginal) updateToggleViewState(false);
+      });
+      btnToggleClick.addEventListener('click', () => {
+        updateToggleViewState(!toggleShowingOriginal);
+      });
+
+      // 12. DOWNLOAD & CLIPBOARD ACTIONS
+      document.getElementById('btn-reset').addEventListener('click', showUploadView);
+      document.getElementById('btn-reset-top').addEventListener('click', showUploadView);
+
+      // Download Transparent PNG
+      document.getElementById('btn-download-transparent').addEventListener('click', () => {
+        if (!cutoutUrl) return;
+        const a = document.createElement('a');
+        a.href = cutoutUrl;
+        a.download = `clearcut_removed_${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+
+      // Download Background Composed Image
+      document.getElementById('btn-download-composed').addEventListener('click', async () => {
+        if (!cutoutBlob || selectedBg.type === 'transparent') return;
+        const canvas = document.createElement('canvas');
+        canvas.width = originalDimensions.width;
+        canvas.height = originalDimensions.height;
+        const ctx = canvas.getContext('2d');
+
+        // Draw solid background color
+        ctx.fillStyle = selectedBg.value;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw cutout image
+        const img = new Image();
+        img.src = cutoutUrl;
+        await new Promise(r => { img.onload = r; });
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(blob => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `clearcut_composed_${Date.now()}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      });
+
+      // Copy Transparent PNG to Clipboard
+      const btnCopy = document.getElementById('btn-copy');
+      const copyText = document.getElementById('copy-text');
+      const copyIcon = document.getElementById('copy-icon');
+
+      btnCopy.addEventListener('click', async () => {
+        if (!cutoutBlob) return;
+        try {
+          if (navigator.clipboard && window.ClipboardItem) {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': cutoutBlob })
+            ]);
+            copyText.innerText = '복사 완료!';
+            copyIcon.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+            btnCopy.style.borderColor = '#10b981';
+            btnCopy.style.color = '#10b981';
+            setTimeout(() => {
+              copyText.innerText = '클립보드 복사';
+              copyIcon.innerHTML = '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
+              btnCopy.style.borderColor = 'var(--border-color)';
+              btnCopy.style.color = 'var(--text-main)';
+            }, 2000);
+          } else {
+            alert('현재 브라우저에서는 이미지 클립보드 복사를 지원하지 않습니다. 다운로드 버튼을 이용해주세요.');
+          }
+        } catch (err) {
+          alert('클립보드 복사 실패: ' + err.message);
+        }
+      });
+    </script>
+  </body>
+</html>
